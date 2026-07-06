@@ -1,0 +1,388 @@
+<!-- Calculadora de custo de impressão 3D — versão web (localStorage) -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calculadora de custo · Impressão 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;450;500;600&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --bg:#0E1013;
+    --card:#171A1F;
+    --field:#1E2228;
+    --ink:#E7E9EC;
+    --muted:#868B94;
+    --faint:#5B616B;
+    --line:#262A31;
+    --line-strong:#343A43;
+    --accent:#D6953F;               /* âmbar contido */
+    --accent-soft:rgba(214,149,63,.14);
+    --c-fil:#D6953F;
+    --c-energy:#5A9AA8;
+    --c-deprec:#8C7BB8;
+    --c-fail:#B5677F;
+    --c-labor:#7A8391;
+    --ok:#5FB477;
+    --sans:'Inter',system-ui,sans-serif;
+    --display:'Space Grotesk',sans-serif;
+    --mono:'JetBrains Mono',monospace;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:var(--sans);font-size:15px;line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:960px;margin:0 auto;padding:26px 18px 64px}
+
+  header{margin-bottom:22px;padding-bottom:20px;border-bottom:1px solid var(--line)}
+  .eyebrow{
+    font-family:var(--mono);font-size:11px;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--faint);font-weight:600;
+  }
+  h1{
+    font-family:var(--display);font-weight:500;font-size:29px;
+    letter-spacing:-.01em;margin:6px 0 6px;line-height:1.08;color:#F2F3F5;
+  }
+  .sub{color:var(--muted);font-size:13.5px;max-width:62ch}
+  .sub b{color:#C4C7CD;font-weight:500}
+
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+  @media(max-width:760px){.grid{grid-template-columns:1fr}}
+
+  .card{
+    background:var(--card);border:1px solid var(--line);
+    border-radius:12px;padding:18px;
+  }
+  .card h2{
+    font-family:var(--display);font-weight:500;font-size:15px;
+    letter-spacing:.01em;margin:0 0 2px;display:flex;align-items:center;gap:8px;color:#EDEEF0;
+  }
+  .card .hint{color:var(--muted);font-size:12.5px;margin:0 0 14px}
+  .tag{
+    font-family:var(--mono);font-size:10px;font-weight:600;
+    padding:2px 7px;border-radius:5px;letter-spacing:.05em;
+    background:var(--field);color:var(--muted);border:1px solid var(--line-strong);
+  }
+
+  .field{margin-bottom:12px}
+  .field:last-child{margin-bottom:0}
+  label{display:block;font-size:12.5px;font-weight:500;margin-bottom:5px;color:#B4B8BF}
+  label .u{color:var(--faint);font-weight:400}
+  input,select{
+    width:100%;font-family:var(--mono);font-size:14px;font-weight:500;
+    padding:9px 11px;border:1px solid var(--line-strong);border-radius:8px;
+    background:var(--field);color:var(--ink);outline:none;
+  }
+  select{cursor:pointer}
+  input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+  .slot{
+    display:grid;grid-template-columns:auto 1fr 1fr auto;gap:8px;
+    align-items:center;padding:9px 0;border-top:1px solid var(--line);
+  }
+  .slot:first-of-type{border-top:none}
+  .swatch{
+    width:26px;height:26px;border-radius:6px;border:1px solid var(--line-strong);
+    cursor:pointer;padding:0;appearance:none;-webkit-appearance:none;background:none;
+  }
+  .slot input{padding:7px 9px;font-size:13px}
+  .slot .lab{font-size:10px;color:var(--faint);font-family:var(--mono);
+    text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px;display:block}
+  .del{
+    border:none;background:none;color:var(--faint);cursor:pointer;
+    font-size:18px;line-height:1;padding:4px;border-radius:6px;
+  }
+  .del:hover{background:rgba(181,103,127,.18);color:var(--c-fail)}
+  .addslot{
+    margin-top:10px;font-family:var(--mono);font-size:12px;font-weight:600;
+    background:none;border:1px dashed var(--line-strong);color:var(--muted);
+    padding:9px;width:100%;border-radius:8px;cursor:pointer;letter-spacing:.03em;
+  }
+  .addslot:hover{border-color:var(--accent);color:var(--accent)}
+  .addslot:disabled{opacity:.35;cursor:not-allowed}
+
+  details.config{margin-top:16px;background:var(--card);border:1px solid var(--line);border-radius:12px}
+  details.config>summary{
+    list-style:none;cursor:pointer;padding:16px 18px;
+    font-family:var(--display);font-weight:500;font-size:15px;color:#EDEEF0;
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  details.config>summary::-webkit-details-marker{display:none}
+  details.config>summary .chev{transition:transform .2s;color:var(--faint)}
+  details.config[open]>summary .chev{transform:rotate(90deg)}
+  .config-body{padding:0 18px 18px;border-top:1px solid var(--line)}
+  .config-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 16px;margin-top:14px}
+  @media(max-width:520px){.config-grid{grid-template-columns:1fr}}
+  .savednote{font-family:var(--mono);font-size:11px;color:var(--ok);margin-top:12px;opacity:0;transition:opacity .3s}
+  .savednote.show{opacity:1}
+
+  .readout{position:sticky;top:16px}
+  .panel{
+    background:var(--card);border:1px solid var(--line-strong);border-radius:12px;padding:20px;
+    box-shadow:0 1px 0 rgba(255,255,255,.02) inset;
+  }
+  .panel .plabel{font-family:var(--mono);font-size:10px;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--faint)}
+  .cost-line{display:flex;align-items:baseline;justify-content:space-between;margin-top:3px}
+  .cost-val{font-family:var(--mono);font-size:21px;font-weight:600;color:#C4C7CD}
+  .price-big{
+    font-family:var(--mono);font-weight:700;font-size:44px;letter-spacing:-.02em;
+    line-height:1;margin-top:4px;color:#F4F5F6;
+  }
+  .price-big .cur{font-size:20px;color:var(--accent);font-weight:600;vertical-align:6px;margin-right:3px}
+  .profit{font-family:var(--mono);font-size:12px;color:var(--ok);margin-top:9px}
+  .perunit{font-family:var(--mono);font-size:11px;color:var(--faint);margin-top:3px}
+  .divider{height:1px;background:var(--line);margin:16px 0}
+
+  .layers{margin-top:2px}
+  .layer{margin-bottom:11px}
+  .layer-top{display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px}
+  .layer-name{color:var(--muted);display:flex;align-items:center;gap:7px}
+  .dot{width:8px;height:8px;border-radius:2px;display:inline-block}
+  .layer-val{font-family:var(--mono);color:#C4C7CD;font-weight:500}
+  .bar{height:6px;border-radius:3px;background:#22262C;overflow:hidden}
+  .bar>span{display:block;height:100%;border-radius:3px;transition:width .35s ease}
+
+  footer{margin-top:22px;font-size:12px;color:var(--muted);line-height:1.65}
+  footer b{color:#B4B8BF;font-weight:500}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Precificação de peças</div>
+    <h1>Calculadora de custo de impressão 3D</h1>
+    <p class="sub">Pegue os <b>gramas por cor</b> e o <b>tempo</b> na página do modelo
+      (ou no fatiador, depois de fatiar) e preencha abaixo. A calculadora devolve o custo
+      real e um preço sugerido com sua margem.</p>
+  </header>
+
+  <div class="grid">
+    <div>
+      <div class="card">
+        <h2>Filamento <span class="tag">multicor · até 4 cores</span></h2>
+        <p class="hint">Uma linha por cor. Peça de cor única? Use só a primeira linha.
+          O peso normalmente já vem somado com a purga.</p>
+        <div id="slots"></div>
+        <button class="addslot" id="addSlot">+ adicionar cor</button>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <h2>Impressão</h2>
+        <p class="hint">Tempo total que o fatiador mostrou para a placa inteira.</p>
+        <div class="row2">
+          <div class="field" style="margin:0">
+            <label>Tempo <span class="u">— horas</span></label>
+            <input type="number" id="hours" min="0" step="1" value="4">
+          </div>
+          <div class="field" style="margin:0">
+            <label>Tempo <span class="u">— minutos</span></label>
+            <input type="number" id="mins" min="0" max="59" step="1" value="0">
+          </div>
+        </div>
+        <div class="field" style="margin-top:12px">
+          <label>Quantidade <span class="u">— quantas vezes vai imprimir essa placa</span></label>
+          <input type="number" id="qty" min="1" step="1" value="1">
+        </div>
+      </div>
+
+      <details class="config" id="cfg">
+        <summary>Configurações da oficina <span class="chev">›</span></summary>
+        <div class="config-body">
+          <p class="hint" style="margin-top:14px">
+            Ajuste uma vez e a calculadora lembra neste aparelho. São os custos fixos do negócio.</p>
+          <div class="config-grid">
+            <div class="field">
+              <label>Preço da impressora <span class="u">— R$</span></label>
+              <input type="number" id="printerCost" step="1" value="4500">
+            </div>
+            <div class="field">
+              <label>Vida útil estimada <span class="u">— horas</span></label>
+              <input type="number" id="lifetime" step="100" value="5000">
+            </div>
+            <div class="field">
+              <label>Potência da impressora <span class="u">— watts</span></label>
+              <input type="number" id="watts" step="5" value="100">
+            </div>
+            <div class="field">
+              <label>Tarifa de energia <span class="u">— R$/kWh</span></label>
+              <input type="number" id="tariff" step="0.001" value="0.65">
+            </div>
+            <div class="field">
+              <label>Bandeira tarifária <span class="u">— acréscimo</span></label>
+              <select id="flag">
+                <option value="0">Verde (+R$0,000)</option>
+                <option value="0.013">Amarela (+R$0,013)</option>
+                <option value="0.041">Vermelha P1 (+R$0,041)</option>
+                <option value="0.062" selected>Vermelha P2 (+R$0,062)</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Margem de falha <span class="u">— % do custo</span></label>
+              <input type="number" id="failure" step="1" value="15">
+            </div>
+            <div class="field">
+              <label>Mão de obra <span class="u">— R$/hora</span></label>
+              <input type="number" id="laborRate" step="1" value="30">
+            </div>
+            <div class="field">
+              <label>Tempo de trabalho <span class="u">— min/placa</span></label>
+              <input type="number" id="laborMin" step="1" value="15">
+            </div>
+            <div class="field">
+              <label>Margem de lucro <span class="u">— %</span></label>
+              <input type="number" id="margin" step="5" value="100">
+            </div>
+          </div>
+          <div class="savednote" id="savednote">✓ configurações salvas neste aparelho</div>
+        </div>
+      </details>
+    </div>
+
+    <div class="readout">
+      <div class="panel">
+        <div class="plabel">Custo real do trabalho</div>
+        <div class="cost-line"><span class="cost-val" id="totalCost">R$0,00</span></div>
+        <div class="divider"></div>
+        <div class="plabel">Preço sugerido de venda</div>
+        <div class="price-big"><span class="cur">R$</span><span id="priceBig">0,00</span></div>
+        <div class="profit" id="profit">lucro R$0,00</div>
+        <div class="perunit" id="perunit"></div>
+        <div class="divider"></div>
+        <div class="plabel" style="margin-bottom:12px">Para onde vai cada real</div>
+        <div class="layers" id="layers"></div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <b>Onde pegar os números:</b> na página do modelo, o peso de filamento e o tempo aparecem
+    em cada perfil de impressão. Se for multicor, ele mostra o peso por cor — copie cada uma numa linha.
+    <br><br>
+    <b>Dica:</b> a bandeira vermelha e a margem de falha de 15% são folgas de segurança.
+    Num mês tranquilo você pode baixar a bandeira e dar um respiro no preço.
+  </footer>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const COLORS = ['#D6953F','#B5677F','#5A9AA8','#8C7BB8','#7A8391','#C9A24B','#D9DCE0','#6B7280'];
+
+let slots = [{color:'#D6953F', grams:12, price:130}];
+
+function renderSlots(){
+  const box = $('slots'); box.innerHTML='';
+  slots.forEach((s,i)=>{
+    const div = document.createElement('div');
+    div.className='slot';
+    div.innerHTML = `
+      <input type="color" class="swatch" value="${s.color}" data-i="${i}" data-k="color" aria-label="cor">
+      <div><span class="lab">gramas</span>
+        <input type="number" min="0" step="0.1" value="${s.grams}" data-i="${i}" data-k="grams"></div>
+      <div><span class="lab">R$/kg</span>
+        <input type="number" min="0" step="1" value="${s.price}" data-i="${i}" data-k="price"></div>
+      <button class="del" data-i="${i}" title="remover cor" ${slots.length===1?'style="visibility:hidden"':''}>×</button>`;
+    box.appendChild(div);
+  });
+  box.querySelectorAll('input').forEach(inp=>{
+    inp.addEventListener('input', e=>{
+      const {i,k}=e.target.dataset;
+      slots[i][k] = k==='color'? e.target.value : parseFloat(e.target.value)||0;
+      calc();
+    });
+  });
+  box.querySelectorAll('.del').forEach(b=>{
+    b.addEventListener('click', e=>{
+      slots.splice(+e.target.dataset.i,1); renderSlots(); calc();
+    });
+  });
+  $('addSlot').disabled = slots.length>=4;
+}
+$('addSlot').addEventListener('click', ()=>{
+  if(slots.length>=4) return;
+  slots.push({color:COLORS[slots.length]||'#6B7280', grams:0, price:slots[0]?.price||130});
+  renderSlots(); calc();
+});
+
+const brl = n => n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+const CFG_KEYS = ['printerCost','lifetime','watts','tariff','flag','failure','laborRate','laborMin','margin'];
+let saveTimer;
+
+function loadConfig(){
+  try{
+    const raw = localStorage.getItem('cfg_calc3d');
+    if(raw){
+      const c = JSON.parse(raw);
+      CFG_KEYS.forEach(k=>{ if(c[k]!==undefined) $(k).value = c[k]; });
+    }
+  }catch(e){}
+}
+function saveConfig(){
+  const c={}; CFG_KEYS.forEach(k=> c[k]=$(k).value);
+  try{
+    localStorage.setItem('cfg_calc3d', JSON.stringify(c));
+    const n=$('savednote'); n.classList.add('show');
+    clearTimeout(saveTimer); saveTimer=setTimeout(()=>n.classList.remove('show'),1500);
+  }catch(e){}
+}
+
+function calc(){
+  const hours = (parseFloat($('hours').value)||0) + (parseFloat($('mins').value)||0)/60;
+  const qty   = Math.max(1, parseInt($('qty').value)||1);
+
+  const printerCost = parseFloat($('printerCost').value)||0;
+  const lifetime    = Math.max(1, parseFloat($('lifetime').value)||1);
+  const watts       = parseFloat($('watts').value)||0;
+  const tariff      = parseFloat($('tariff').value)||0;
+  const flag        = parseFloat($('flag').value)||0;
+  const failurePct  = parseFloat($('failure').value)||0;
+  const laborRate   = parseFloat($('laborRate').value)||0;
+  const laborMin    = parseFloat($('laborMin').value)||0;
+  const marginPct   = parseFloat($('margin').value)||0;
+
+  const cFilament = slots.reduce((a,s)=> a + s.grams*(s.price/1000), 0);
+  const cEnergy   = (watts/1000)*hours*(tariff+flag);
+  const cDeprec   = (printerCost/lifetime)*hours;
+  const base      = cFilament + cEnergy + cDeprec;
+  const cFailure  = base*(failurePct/100);
+  const cLabor    = laborRate*(laborMin/60);
+
+  const totalUnit = base + cFailure + cLabor;
+  const total     = totalUnit*qty;
+  const price     = total*(1+marginPct/100);
+  const profit    = price-total;
+
+  $('totalCost').textContent = 'R$'+brl(total);
+  $('priceBig').textContent  = brl(price);
+  $('profit').textContent    = 'lucro R$'+brl(profit)+'  ·  margem '+marginPct+'%';
+  $('perunit').textContent   = qty>1 ? `${qty} unidades · R$${brl(price/qty)} cada` : '';
+
+  const parts = [
+    {name:'Filamento',   val:cFilament, color:'var(--c-fil)'},
+    {name:'Energia',     val:cEnergy,   color:'var(--c-energy)'},
+    {name:'Depreciação', val:cDeprec,   color:'var(--c-deprec)'},
+    {name:'Falha',       val:cFailure,  color:'var(--c-fail)'},
+    {name:'Mão de obra', val:cLabor,    color:'var(--c-labor)'},
+  ];
+  const layers = $('layers'); layers.innerHTML='';
+  parts.forEach(p=>{
+    const pct = totalUnit>0 ? (p.val/totalUnit*100) : 0;
+    const el = document.createElement('div');
+    el.className='layer';
+    el.innerHTML=`
+      <div class="layer-top">
+        <span class="layer-name"><span class="dot" style="background:${p.color}"></span>${p.name}</span>
+        <span class="layer-val">R$${brl(p.val)} · ${pct.toFixed(0)}%</span>
+      </div>
+      <div class="bar"><span style="width:${pct}%;background:${p.color}"></span></div>`;
+    layers.appendChild(el);
+  });
+}
+
+document.querySelectorAll('#hours,#mins,#qty').forEach(el=> el.addEventListener('input', calc));
+CFG_KEYS.forEach(k=> $(k).addEventListener('input', ()=>{ calc(); saveConfig(); }));
+
+loadConfig(); renderSlots(); calc();
